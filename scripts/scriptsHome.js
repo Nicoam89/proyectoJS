@@ -1,3 +1,5 @@
+/* Solicitar un turno Online */
+
 alert("Esta Ingresando a resevar un turno Online")
 
 /* Solicitar datos al paciente */
@@ -12,7 +14,7 @@ function solicitarDatos(){
 // Alerta Reserva
 
      alert(
-    "Resumen de tu solicitud:\n" +
+    "Turno:\n" +
     "Nombre: " + nombre + "\n" +
     "Profesional: " + profesional + "\n" +
     "Fecha: " + fecha + "\n" +
@@ -39,6 +41,7 @@ solicitarDatos()
 
 const reservas = [];
 
+// Funcion mostrar reservas
 
 function mostrarReservas() {
   console.log("Reservas confirmadas:");
