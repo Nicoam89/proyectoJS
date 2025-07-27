@@ -6,9 +6,12 @@
     <!-- Titulo Pagina -->
     <title>Simulador de Turnos Online</title>
     <!-- Script JS -->    
-    <script src="./scripts/scriptsHome.js" defer></script>
-    <!-- Stiles -->
+    <script src="./scripts/scriptsHome.js" defer></script>  
+    <!-- Styles -->
      <link rel="stylesheet" href="./styles/styles.css">
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script>
 </head>
 <body>
     <header>
@@ -16,14 +19,27 @@
         <h2>Nicolas Ariel Martin - Comision 73490</h2>
     </header>
     <main>
-        <section>
-            
-        </section>
+    <section id="form-section">
+        <h2>Nuevo Turno</h2>
+        <form id="turno-form">
+            <h3>Nombre del Paciente</h3>
+            <input type="text" id="nombre" class="input-group" placeholder="Nombre del paciente" required>
+            <h3>Fecha Turno</h3>
+            <input type="date" id="fecha" required>
+            <h3>Hora Turno</h3>
+            <input type="time" id="hora" required>
+            <button type="submit" class="btn btn-secondary">Agregar Turno</button>
+        </form>
+    </section>
+        <section id="turnos-section">
+        <h2>Turnos Programados</h2>
+        <ul id="lista-turnos"></ul>
+    </section>
     </main>
     <footer>
 
     </footer>
 
-
+    
 </body>
 </html>
