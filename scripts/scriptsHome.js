@@ -1,84 +1,105 @@
-/* Variables y constantes */
-let turnos = JSON.parse(localStorage.getItem("turnos")) || [];
-const LIMITE_TURNOS = 20;
+window.addEventListener("DOMContentLoaded", () => {
+  const app = document.getElementById('app');
 
-/* Elementos del DOM */
-const turnoForm = document.getElementById("turno-form");
-const listaTurnos = document.getElementById("lista-turnos");
+  // HTML dinámico
+  app.innerHTML = `
+    <h2>Monto a Convertir</h2>
+    <input type="number" id="monto" placeholder="Monto">
+    <select id="deMoneda"><h3>De</h3></select>
+    <select id="aMoneda"><h3>A</h3></select>
+    <button id="convertirBtn" class="btn btn-light">Convertir</button>
+    <h3 id="resultado"></h3>
+  `;
 
-/* Funciones */
-function guardarEnStorage() {
-    localStorage.setItem("turnos", JSON.stringify(turnos));
-    /* Consola para seguimiento */
-    console.log("Turnos guardados en localStorage:", turnos); 
+  const fromSelect = document.getElementById('deMoneda');
+  const toSelect   = document.getElementById('aMoneda');
+  const convertBtn = document.getElementById('convertirBtn');
+  const result     = document.getElementById('resultado');
+
+  let symbolsMap = {}; // mapa para símbolos
+
+  // Cargar símbolos desde JSON local
+  async function getSymbols() {
+    const res = await fetch("./json/simbolos.json");
+    if (!res.ok) throw new Error("No pude cargar las monedas");
+    const symbols = await res.json();
+    return Object.entries(symbols)
+      .map(([code, symbol]) => ({ code, symbol }))
+      .sort((a, b) => a.code.localeCompare(b.code));
+  }
+
+  function fillSelect(select, options) {
+    select.innerHTML = options
+      .map(opt => `<option value="${opt.code}">${opt.code} (${opt.symbol})</option>`)
+      .join('');
+  }
+
+
+  // API Config
+
+  let API_KEY = "";
+  async function loadConfig() {
+  const res = await fetch("./json/api.json");
+  if (!res.ok) throw new Error("No pude cargar la config");
+  const config = await res.json();
+  API_KEY = config.API_KEY;
 }
 
-function renderTurnos() {
-    listaTurnos.innerHTML = "";
-    turnos.forEach((turno, index) => {
-        const li = document.createElement("li");
-        li.innerHTML = `
-            ${turno.nombre} - ${turno.fecha} ${turno.hora}
-            <button class="delete-btn" onclick="eliminarTurno(${index})">Eliminar</button>
-        `;
-        listaTurnos.appendChild(li);
-    });
-}
 
-function agregarTurno(event) {
-    event.preventDefault();
-    const nombre = document.getElementById("nombre").value.trim();
-    const fecha = document.getElementById("fecha").value;
-    const hora = document.getElementById("hora").value;
+  const API_BASE = "https://api.exchangerate.host/convert";
 
-    /* Validación simple con condicionales */
-    if (!nombre || !fecha || !hora) {
-        alert("Por favor completa todos los campos.");
-        return;
+  // Evento de conversión
+  convertBtn.addEventListener("click", async () => {
+    const amount = parseFloat(document.getElementById("monto").value);
+    const from = fromSelect.value;
+    const to = toSelect.value;
+
+    if (isNaN(amount) || amount <= 0) {
+      result.textContent = "Por favor ingresa un monto válido";
+      return;
     }
 
-    /* Evitar turnos duplicados */
-    const existe = turnos.some(turno => turno.fecha === fecha && turno.hora === hora);
-    if (existe) {
-        alert("Ya existe un turno para esa fecha y hora.");
-        return;
+    try {
+      result.textContent = "Convirtiendo...";
+
+const res = await fetch(
+  `${API_BASE}?access_key=${API_KEY}&from=${from}&to=${to}&amount=${amount}`
+);
+
+      if (!res.ok) throw new Error("Error al consultar la API");
+      const data = await res.json();
+
+      const converted = data.result;
+      const symbol = symbolsMap[to] || "";
+      result.textContent = `${amount} ${symbolsMap[from]} (${from}) = ${symbol} ${converted.toFixed(2)} (${to})`;
+
+    } catch (err) {
+      result.textContent = "Error: " + err.message;
     }
+  });
 
-    /* Confirmación antes de agregar */
-    if (confirm(`¿Confirmar turno para ${nombre} el ${fecha} a las ${hora}?`)) {
-        const nuevoTurno = { nombre, fecha, hora };
-        if (turnos.length < LIMITE_TURNOS) {
-            turnos.push(nuevoTurno);
-            guardarEnStorage();
-            renderTurnos();
-            turnoForm.reset();
-        } else {
-            alert("Se alcanzó el límite de turnos para el día.");
-        }
+// Inicializar
+  (async () => {
+    try {
+      convertBtn.disabled = true;
+
+      // 🔑 Cargar API_KEY
+      await loadConfig();
+
+      // 💱 Cargar símbolos
+      const symbols = await getSymbols();
+      fillSelect(fromSelect, symbols);
+      fillSelect(toSelect, symbols);
+
+      // Guardar mapa
+      symbolsMap = Object.fromEntries(symbols.map(s => [s.code, s.symbol]));
+
+      fromSelect.value = "USD";
+      toSelect.value = "ARS";
+    } catch (err) {
+      result.textContent = err.message;
+    } finally {
+      convertBtn.disabled = false;
     }
-}
-
-function eliminarTurno(index) {
-    const turno = turnos[index];
-    if (confirm(`¿Eliminar el turno de ${turno.nombre} el ${turno.fecha} a las ${turno.hora}?`)) {
-        turnos.splice(index, 1);
-        guardarEnStorage();
-        renderTurnos();
-    }
-}
-
-/* Ejemplo de prompt: cargar un turno inicial si está vacío */
-if (turnos.length === 0) {
-    const cargarDemo = confirm("¿Quieres agregar un turno de ejemplo?");
-    if (cargarDemo) {
-        const nombreDemo = prompt("Ingrese el nombre del paciente de prueba:", "Paciente Demo");
-        turnos.push({ nombre: nombreDemo || "Paciente Demo", fecha: "2025-07-25", hora: "10:00" });
-        guardarEnStorage();
-    }
-}
-
-/* Eventos */
-turnoForm.addEventListener("submit", agregarTurno);
-
-/* Inicialización */
-renderTurnos();
+  })();
+});
