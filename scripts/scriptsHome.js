@@ -1,23 +1,24 @@
+const app = document.getElementById('app');
 
-  const app = document.getElementById('app');
+// HTML dinámico
+app.innerHTML = `
+  <h2>Monto a Convertir</h2>
+  <input type="number" id="monto" class="form-control mb-2" placeholder="Monto">
+  <label for="deMoneda">De:</label>
+  <select id="deMoneda" class="form-select mb-2"></select>
+  <label for="aMoneda">A:</label>
+  <select id="aMoneda" class="form-select mb-2"></select>
+  <button id="convertirBtn" class="btn btn-light">Convertir</button>
+  <h3 id="resultado" class="mt-3"></h3>
+`;
 
-  // HTML dinámico
-  app.innerHTML = `
-    <h2>Monto a Convertir</h2>
-    <input type="number" id="monto" placeholder="Monto">
-    <select id="deMoneda"><h3>De</h3></select>
-    <select id="aMoneda"><h3>A</h3></select>
-    <button id="convertirBtn" class="btn btn-light">Convertir</button>
-    <h3 id="resultado"></h3>
-  `;
+const fromSelect = document.getElementById('deMoneda');
+const toSelect   = document.getElementById('aMoneda');
+const convertBtn = document.getElementById('convertirBtn');
+const result     = document.getElementById('resultado');
+const btnHist    = document.getElementById('verHistorial');
 
-  const fromSelect = document.getElementById('deMoneda');
-  const toSelect   = document.getElementById('aMoneda');
-  const convertBtn = document.getElementById('convertirBtn');
-  const result     = document.getElementById('resultado');
-  const btnHist    = document.getElementById('verHistorial');
-
-let symbolsMap = {}; // mapa para símbolos
+let symbolsMap = {}; 
 let API_KEY = "";
 
 // === Funciones de utilidad ===
@@ -40,7 +41,7 @@ async function loadConfig() {
   const res = await fetch("./json/api.json");
   if (!res.ok) throw new Error("No pude cargar la config");
   const config = await res.json();
-  API_KEY = config.API_KEY; // por si en el futuro usás una API con key
+  API_KEY = config.API_KEY; 
 }
 
 // === Historial con localStorage ===
@@ -75,13 +76,13 @@ convertBtn.addEventListener("click", async () => {
   try {
     result.textContent = "Convirtiendo...";
 
-    const res = await fetch(
-      `${API_BASE}?from=${from}&to=${to}&amount=${amount}`
-    );
+const res = await fetch(
+  `${API_BASE}?from=${from}&to=${to}&amount=${amount}&access_key=${API_KEY}`
+);
 
     if (!res.ok) throw new Error("Error al consultar la API");
     const data = await res.json();
-
+console.log("Data: ", data)
     const converted = data.result;
     const symbol = symbolsMap[to] || "";
 
@@ -92,7 +93,6 @@ convertBtn.addEventListener("click", async () => {
     // Guardar en historial
     saveHistory(message);
 
-    // Notificación bonita con SweetAlert2
     Swal.fire({
       icon: 'success',
       title: 'Conversión exitosa',
@@ -126,8 +126,8 @@ btnHist.addEventListener("click", () => {
   try {
     convertBtn.disabled = true;
 
-    await loadConfig(); // cargar api.json
-    const symbols = await getSymbols(); // cargar símbolos
+    await loadConfig(); 
+    const symbols = await getSymbols(); 
 
     fillSelect(fromSelect, symbols);
     fillSelect(toSelect, symbols);
