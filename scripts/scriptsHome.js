@@ -1,4 +1,4 @@
-window.addEventListener("DOMContentLoaded", () => {
+
   const app = document.getElementById('app');
 
   // HTML dinámico
@@ -15,91 +15,130 @@ window.addEventListener("DOMContentLoaded", () => {
   const toSelect   = document.getElementById('aMoneda');
   const convertBtn = document.getElementById('convertirBtn');
   const result     = document.getElementById('resultado');
+  const btnHist    = document.getElementById('verHistorial');
 
-  let symbolsMap = {}; // mapa para símbolos
+let symbolsMap = {}; // mapa para símbolos
+let API_KEY = "";
 
-  // Cargar símbolos desde JSON local
-  async function getSymbols() {
-    const res = await fetch("./json/simbolos.json");
-    if (!res.ok) throw new Error("No pude cargar las monedas");
-    const symbols = await res.json();
-    return Object.entries(symbols)
-      .map(([code, symbol]) => ({ code, symbol }))
-      .sort((a, b) => a.code.localeCompare(b.code));
-  }
+// === Funciones de utilidad ===
+async function getSymbols() {
+  const res = await fetch("./json/simbolos.json");
+  if (!res.ok) throw new Error("No pude cargar las monedas");
+  const symbols = await res.json();
+  return Object.entries(symbols)
+    .map(([code, symbol]) => ({ code, symbol }))
+    .sort((a, b) => a.code.localeCompare(b.code));
+}
 
-  function fillSelect(select, options) {
-    select.innerHTML = options
-      .map(opt => `<option value="${opt.code}">${opt.code} (${opt.symbol})</option>`)
-      .join('');
-  }
+function fillSelect(select, options) {
+  select.innerHTML = options
+    .map(opt => `<option value="${opt.code}">${opt.code} (${opt.symbol})</option>`)
+    .join('');
+}
 
-
-  // API Config
-
-  let API_KEY = "";
-  async function loadConfig() {
+async function loadConfig() {
   const res = await fetch("./json/api.json");
   if (!res.ok) throw new Error("No pude cargar la config");
   const config = await res.json();
-  API_KEY = config.API_KEY;
+  API_KEY = config.API_KEY; // por si en el futuro usás una API con key
 }
 
+// === Historial con localStorage ===
+function saveHistory(entry) {
+  const history = JSON.parse(localStorage.getItem("conversiones")) || [];
+  history.push(entry);
+  localStorage.setItem("conversiones", JSON.stringify(history));
+}
 
-  const API_BASE = "https://api.exchangerate.host/convert";
+function loadHistory() {
+  return JSON.parse(localStorage.getItem("conversiones")) || [];
+}
 
-  // Evento de conversión
-  convertBtn.addEventListener("click", async () => {
-    const amount = parseFloat(document.getElementById("monto").value);
-    const from = fromSelect.value;
-    const to = toSelect.value;
+// === API Config ===
+const API_BASE = "https://api.exchangerate.host/convert";
 
-    if (isNaN(amount) || amount <= 0) {
-      result.textContent = "Por favor ingresa un monto válido";
-      return;
-    }
+// === Evento de conversión ===
+convertBtn.addEventListener("click", async () => {
+  const amount = parseFloat(document.getElementById("monto").value);
+  const from = fromSelect.value;
+  const to = toSelect.value;
 
-    try {
-      result.textContent = "Convirtiendo...";
+  if (isNaN(amount) || amount <= 0) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Monto inválido',
+      text: 'Por favor ingresa un monto válido'
+    });
+    return;
+  }
 
-const res = await fetch(
-  `${API_BASE}?access_key=${API_KEY}&from=${from}&to=${to}&amount=${amount}`
-);
+  try {
+    result.textContent = "Convirtiendo...";
 
-      if (!res.ok) throw new Error("Error al consultar la API");
-      const data = await res.json();
+    const res = await fetch(
+      `${API_BASE}?from=${from}&to=${to}&amount=${amount}`
+    );
 
-      const converted = data.result;
-      const symbol = symbolsMap[to] || "";
-      result.textContent = `${amount} ${symbolsMap[from]} (${from}) = ${symbol} ${converted.toFixed(2)} (${to})`;
+    if (!res.ok) throw new Error("Error al consultar la API");
+    const data = await res.json();
 
-    } catch (err) {
-      result.textContent = "Error: " + err.message;
-    }
-  });
+    const converted = data.result;
+    const symbol = symbolsMap[to] || "";
 
-// Inicializar
-  (async () => {
-    try {
-      convertBtn.disabled = true;
+    const message = `${amount} ${symbolsMap[from]} (${from}) = ${symbol} ${converted.toFixed(2)} (${to})`;
 
-      // 🔑 Cargar API_KEY
-      await loadConfig();
+    result.textContent = message;
 
-      // 💱 Cargar símbolos
-      const symbols = await getSymbols();
-      fillSelect(fromSelect, symbols);
-      fillSelect(toSelect, symbols);
+    // Guardar en historial
+    saveHistory(message);
 
-      // Guardar mapa
-      symbolsMap = Object.fromEntries(symbols.map(s => [s.code, s.symbol]));
+    // Notificación bonita con SweetAlert2
+    Swal.fire({
+      icon: 'success',
+      title: 'Conversión exitosa',
+      text: message
+    });
 
-      fromSelect.value = "USD";
-      toSelect.value = "ARS";
-    } catch (err) {
-      result.textContent = err.message;
-    } finally {
-      convertBtn.disabled = false;
-    }
-  })();
+  } catch (err) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: err.message
+    });
+  }
 });
+
+// === Botón para ver historial ===
+btnHist.addEventListener("click", () => {
+  const history = loadHistory();
+  if (history.length === 0) {
+    Swal.fire('Historial vacío', 'Aún no realizaste conversiones', 'info');
+  } else {
+    Swal.fire({
+      title: 'Historial de conversiones',
+      html: history.map(h => `<p>${h}</p>`).join('')
+    });
+  }
+});
+
+// === Inicializar ===
+(async () => {
+  try {
+    convertBtn.disabled = true;
+
+    await loadConfig(); // cargar api.json
+    const symbols = await getSymbols(); // cargar símbolos
+
+    fillSelect(fromSelect, symbols);
+    fillSelect(toSelect, symbols);
+
+    symbolsMap = Object.fromEntries(symbols.map(s => [s.code, s.symbol]));
+
+    fromSelect.value = "USD";
+    toSelect.value = "ARS";
+  } catch (err) {
+    result.textContent = err.message;
+  } finally {
+    convertBtn.disabled = false;
+  }
+})();
